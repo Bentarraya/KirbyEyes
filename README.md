@@ -1,7 +1,7 @@
 # KirbyEyes
 
 Wajah karakter Kirby animasi smooth buat OLED **SSD1306 128x64 (I2C, Adafruit)**, ESP32-C3.
-Ekspresi dihitung pakai lerp (kayak RoboEyes), bukan bitmap frame-by-frame.
+Ekspresi dihitung pakai lerp, bukan bitmap frame-by-frame.
 
 ## Install
 
