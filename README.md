@@ -3,6 +3,8 @@
 Wajah karakter Kirby animasi smooth buat OLED **SSD1306 128x64 (I2C, Adafruit)**, ESP32-C3.
 Ekspresi dihitung pakai lerp, bukan bitmap frame-by-frame.
 
+<img width="1208" height="686" alt="kirby_preview" src="https://github.com/user-attachments/assets/2a5c0309-e810-4a1c-87ce-f8eda0fd3a4b" />
+
 ## Install
 
 - **PlatformIO**: taruh folder ini di `lib/KirbyEyes/` dan pastikan `platformio.ini` punya
