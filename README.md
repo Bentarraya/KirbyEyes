@@ -63,8 +63,8 @@ void loop() {
 ## Pose Format
 
 ```
-//												                                                   Right Eye | Left Eye
-// MOOD {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,}		 {w, h, ang, dx, dy} | {w, h, ang, dx, dy} 	
+//											      Right Eye | Left Eye
+// MOOD {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,}   {w, h, ang, dx, dy} | {w, h, ang, dx, dy} 	
 ```
 
 | Parameter | Description |
@@ -82,3 +82,4 @@ void loop() {
 | `dx, dy` | Offset for that specific eye.
 
 Full examples: `examples/Basic` and `examples/CustomMood`.
+
