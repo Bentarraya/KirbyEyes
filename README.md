@@ -1,21 +1,21 @@
 # KirbyEyes
 
-Wajah karakter Kirby animasi smooth buat OLED **SSD1306 128x64 (I2C, Adafruit)**, ESP32-C3.
-Ekspresi dihitung pakai lerp, bukan bitmap frame-by-frame.
+Smooth animated Kirby character face for **SSD1306 128x64 (I2C, Adafruit)** OLED displays, on ESP32-C3.
+Expressions are calculated using `lerp`, not frame-by-frame bitmaps.
 
 <img width="1208" height="686" alt="kirby_preview" src="https://github.com/user-attachments/assets/2a5c0309-e810-4a1c-87ce-f8eda0fd3a4b" />
 
-## Install
+## Installation
 
-- **PlatformIO**: taruh folder ini di `lib/KirbyEyes/` dan pastikan `platformio.ini` punya
+- **PlatformIO**: Place this folder in `lib/KirbyEyes/` and ensure your `platformio.ini` includes:
   ```ini
   lib_deps =
     adafruit/Adafruit SSD1306
     adafruit/Adafruit GFX Library
   ```
-- **Arduino IDE**: taruh di folder `libraries/`.
+- **Arduino IDE**: Place this folder in your `libraries/` directory.
 
-## Pakai
+## Usage
 
 ```cpp
 #include <KirbyEyes.h>
@@ -30,54 +30,54 @@ void setup() {
 }
 
 void loop() {
-  kirby.update();             // wajib tiap loop, non-blocking
-  kirby.setMood(MOOD_ANGRY);  // aman dipanggil tiap loop (sama = diabaikan)
+  kirby.update();             // required in every loop, non-blocking
+  kirby.setMood(MOOD_ANGRY);  // safe to call every loop (ignored if same mood)
 }
 ```
 
-## Ekspresi bawaan
+## Default Expressions
 
 `MOOD_IDLE`, `MOOD_EXCITED`, `MOOD_LAUGHING`, `MOOD_SUSPICIOUS`, `MOOD_ANGRY`,
 `MOOD_CONFUSED`, `MOOD_SCARED`, `MOOD_SLEEPING`
 
-## API
+## API Reference
 
-| Fungsi | Gunanya |
+| Function | Description |
 |---|---|
-| `begin(fps=30)` | Panggil setelah `display.begin()` |
-| `update()` | Tiap loop. Return `true` kalau nggambar 1 frame |
-| `setMood(m, restart=false)` | Ganti ekspresi. `restart=true` maksa ulang (shake nyala lagi) |
-| `getMood()` / `moodCount()` | Ekspresi aktif / jumlah ekspresi |
-| `addMood(pose)` | Tambah ekspresi custom, return nomornya (-1 kalau penuh) |
-| `pose(m)` | Pointer ke pose buat diubah runtime |
-| `setShakeTime(ms)` | Lama getar sejak ekspresi dipilih (0 = terus) |
-| `setEase(e)` | 0.1 licin, 0.4 snappy |
-| `setFPS(f)` | 1..60 |
-| `setAutoBlink(b)` / `setAutoGlance(b)` | Kedip / lirik acak |
-| `setAutoCycle(on, ms)` | Demo ganti ekspresi otomatis |
-| `setLook(x, y)` | Geser arah pandang manual |
-| `blink()` | Kedip sekali |
+| `begin(fps=30)` | Call after `display.begin()` |
+| `update()` | Call in every loop. Returns `true` if one frame was drawn. |
+| `setMood(m, restart=false)` | Change expression. `restart=true` forces a redraw (e.g., re-triggers shake animation). |
+| `getMood()` / `moodCount()` | Get active expression / total number of expressions. |
+| `addMood(pose)` | Add a custom expression, returns its ID (-1 if full). |
+| `pose(m)` | Returns a pointer to the pose for runtime modification. |
+| `setShakeTime(ms)` | Duration of shake animation after mood selection (0 = continuous). |
+| `setEase(e)` | 0.1 for smooth, 0.4 for snappy transitions. |
+| `setFPS(f)` | Frames per second (1..60). |
+| `setAutoBlink(b)` / `setAutoGlance(b)` | Enable/disable random blinking / random glancing. |
+| `setAutoCycle(on, ms)` | Enable/disable automatic mood cycling for demo purposes. |
+| `setLook(x, y)` | Manually set the direction of gaze. |
+| `blink()` | Triggers a single blink.
 
-## Format pose
+## Pose Format
 
 ```
 {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,
- {w, h, ang, dx, dy},   // mata kiri
- {w, h, ang, dx, dy}}   // mata kanan
+ {w, h, ang, dx, dy},   // left eye
+ {w, h, ang, dx, dy}}   // right eye
 ```
 
-| Angka | Fungsi |
+| Parameter | Description |
 |---|---|
-| `cx, cy` | posisi tengah badan (`cy` besar = turun) |
-| `bodyR` / `bump` | radius badan / radius tangan |
-| `gap` | jarak antar pusat mata |
-| `lookX, lookY` | arah pandang kedua mata |
-| `bounce` | goyang naik-turun pelan |
-| `shakeX` | getar kiri-kanan cepat (marah) |
-| `shakeY` | getar atas-bawah cepat (takut/ketawa) |
-| `glance` | 1 = boleh lirik acak, 0 = mata diam |
-| `w, h` | tebal dan panjang kapsul mata (`h >= w`) |
-| `ang` | sudut: 0 tegak, 90 rebah, + miring `/`, - miring `\` |
-| `dx, dy` | geser mata itu saja |
+| `cx, cy` | Body center position (`cy` larger = lower). |
+| `bodyR` / `bump` | Body radius / hand radius. |
+| `gap` | Distance between eye centers. |
+| `lookX, lookY` | Gaze direction for both eyes. |
+| `bounce` | Slow up-and-down movement. |
+| `shakeX` | Fast horizontal shake (e.g., angry). |
+| `shakeY` | Fast vertical shake (e.g., scared/laughing). |
+| `glance` | 1 = allow random glances, 0 = static eyes. |
+| `w, h` | Width and height of the eye capsule (`h >= w`). |
+| `ang` | Angle: 0 for vertical, 90 for horizontal, + for `/` tilt, - for `\` tilt. |
+| `dx, dy` | Offset for that specific eye.
 
-Contoh lengkap: `examples/Basic` dan `examples/CustomMood`.
+Full examples: `examples/Basic` and `examples/CustomMood`.
