@@ -7,13 +7,15 @@ Expressions are calculated using `lerp`, not frame-by-frame bitmaps.
 
 ## Installation
 
-- **PlatformIO**: Place this folder in `lib/KirbyEyes/` and ensure your `platformio.ini` includes:
+- **PlatformIO** Edit your 'platformio.ini' into:
+
   ```ini
   lib_deps =
     adafruit/Adafruit SSD1306
     adafruit/Adafruit GFX Library
+    https://github.com/Bentarraya/KirbyEyes.git
   ```
-- **Arduino IDE**: Place this folder in your `libraries/` directory.
+- **Arduino IDE**: Clone or Place this repo in your `libraries/` directory.
 
 ## Usage
 
@@ -61,9 +63,8 @@ void loop() {
 ## Pose Format
 
 ```
-{cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,
- {w, h, ang, dx, dy},   // left eye
- {w, h, ang, dx, dy}}   // right eye
+//												                                                   Right Eye | Left Eye
+// MOOD {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,}		 {w, h, ang, dx, dy} | {w, h, ang, dx, dy} 	
 ```
 
 | Parameter | Description |

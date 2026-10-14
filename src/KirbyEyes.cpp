@@ -7,8 +7,8 @@ static_assert(sizeof(KirbyPose) == 21 * sizeof(float),
 static const int POSE_FLOATS = sizeof(KirbyPose) / sizeof(float);
 
 // Ekspresi bawaan, persis dari main.cpp.
-// {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,
-//  {w, h, ang, dx, dy} mata KIRI, {w, h, ang, dx, dy} mata KANAN}
+//												                                                                     Right Eye , Left Eye
+// MOOD {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,}		 {w, h, ang, dx, dy} , {w, h, ang, dx, dy} 	
 static const KirbyPose BUILTIN_POSES[KIRBY_BUILTIN_COUNT] = {
   /* IDLE       */ {64, 33, 24,  9, 20, 0, 0, 0, 0,   0,   1,   {8, 18,   0, 0,  0}, {8, 18,   0,  0,  0}},
   /* EXCITED    */ {64, 33, 26, 11, 20, 2, 0, 3, 0,   0,   1,   {9, 24,   0, 0,  0}, {9, 24,   0,  0,  0}},
