@@ -18,13 +18,14 @@
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 KirbyEyes kirby(display);
 
+// Contoh pose custom (versi built-in-nya ada di MOOD_WINK / MOOD_BORED).
 // Wink: mata kiri melek, mata kanan jadi garis rebah
 const KirbyPose POSE_WINK = {64, 33, 24, 9, 20, 0, 0, 0, 0, 0, 1,
                              {8, 18, 0, 0, 0}, {3, 12, 90, 0, 2}};
 
-// Bored: mata pipih, badan agak turun, lirik ke bawah
+// Bored: mata setengah pejam, badan agak turun, lirik ke bawah
 const KirbyPose POSE_BORED = {64, 35, 24, 9, 22, 0, 4, 0, 0, 0, 0,
-                              {10, 6, 90, 0, 0}, {10, 6, 90, 0, 0}};
+                              {4, 10, 90, 0, 0}, {4, 10, 90, 0, 0}};
 
 int moodWink, moodBored;
 

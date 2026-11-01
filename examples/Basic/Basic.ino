@@ -3,9 +3,11 @@
  * ESP32-C3 + OLED SSD1306 128x64 I2C (alamat 0x3C)
  *
  * Awalnya ganti ekspresi otomatis tiap 4 detik (demo).
- * Buka Serial Monitor 115200 lalu tekan angka buat milih ekspresi manual:
+ * Buka Serial Monitor 115200 lalu kirim satu karakter:
  *   0 idle  1 excited  2 laughing  3 suspicious
  *   4 angry 5 confused 6 scared    7 sleeping
+ *   8 wink  9 bored     n next      (10 = surprised)
+ *   b blink            w wink       i invert
  *
  * Catatan PlatformIO: kalau Serial kosong di ESP32-C3, jangan pakai
  * -DARDUINO_USB_CDC_ON_BOOT=0 di board asli (flag itu cuma buat Wokwi).
@@ -17,6 +19,7 @@
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 KirbyEyes kirby(display);
+bool inverted = false;
 
 void setup() {
   Serial.begin(115200);
@@ -38,9 +41,19 @@ void loop() {
 
   if (Serial.available()) {
     char c = Serial.read();
-    if (c >= '0' && c < '0' + KIRBY_BUILTIN_COUNT) {
+    if (c >= '0' && c <= '9') {
       kirby.setAutoCycle(false);    // matiin demo, kendali manual
       kirby.setMood(c - '0');
+    } else if (c == 'n') {
+      kirby.setAutoCycle(false);
+      kirby.setMood((kirby.getMood() + 1) % kirby.moodCount(), true);
+    } else if (c == 'b') {
+      kirby.blink();
+    } else if (c == 'w') {
+      kirby.wink();                 // mata kiri layar
+    } else if (c == 'i') {
+      inverted = !inverted;
+      kirby.setInverted(inverted);
     }
   }
 
@@ -48,4 +61,5 @@ void loop() {
   //   if (jarak < 10)            kirby.setMood(MOOD_SCARED);
   //   else if (digitalRead(BTN)) kirby.setMood(MOOD_ANGRY);
   //   else                       kirby.setMood(MOOD_IDLE);
+  //   kirby.lookAt(x, y);        // mata ngikutin titik di layar
 }
