@@ -7,7 +7,7 @@ static_assert(sizeof(KirbyPose) == 21 * sizeof(float),
 static const int POSE_FLOATS = sizeof(KirbyPose) / sizeof(float);
 
 // Ekspresi bawaan, persis dari main.cpp.
-//												                                                                     Right Eye , Left Eye
+//												                                                                     eyeL (kiri layar) , eyeR (kanan layar)
 // MOOD {cx, cy, bodyR, bump, gap, lookX, lookY, bounce, shakeX, shakeY, glance,}		 {w, h, ang, dx, dy} , {w, h, ang, dx, dy} 	
 static const KirbyPose BUILTIN_POSES[KIRBY_BUILTIN_COUNT] = {
   /* IDLE       */ {64, 33, 24,  9, 20, 0, 0, 0, 0,   0,   1,   {8, 18,   0, 0,  0}, {8, 18,   0,  0,  0}},
@@ -18,7 +18,14 @@ static const KirbyPose BUILTIN_POSES[KIRBY_BUILTIN_COUNT] = {
   /* CONFUSED   */ {64, 33, 24,  9, 20, 0, 0, 0, 0,   0,   0.5, {6, 17,   4, 0, -1}, {6, 12,  94, -7,  1}},
   /* SCARED     */ {64, 35, 23,  8, 15, 0, 0, 0, 0,   1.8, 0,   {3, 12,  12, 0,  0}, {3, 12, -12,  0,  0}},
   /* SLEEPING   */ {64, 38, 24,  8, 18, 0, 5, 0, 0,   0,   0,   {3, 12,  90, 0,  0}, {3, 12,  90,  0,  0}},
+  /* WINK       */ {64, 33, 24,  9, 20, 0, 0, 0, 0,   0,   1,   {3, 12,  90,  0,  2}, {8, 18,   0, 0,  0}},
+  /* BORED      */ {64, 35, 24,  9, 22, 0, 3, 0, 0,   0,   0,   {4, 10,  90, 0,  0}, {4, 10,  90,  0,  0}},
+  /* SURPRISED  */ {64, 32, 24,  9, 23, 0, 0, 1.5, 0, 0,   0,   {10, 13,  0, 0,  0}, {10, 13,  0,  0,  0}},
 };
+
+// Durasi mata tertutup (ms). WINK lebih lama biar kelihatan.
+static const uint16_t BLINK_MS = 110;
+static const uint16_t WINK_MS = 160;
 
 static inline bool due(uint32_t now, uint32_t t) { return (int32_t)(now - t) >= 0; }
 static inline float maxf(float a, float b) { return a > b ? a : b; }
@@ -35,7 +42,7 @@ void KirbyEyes::begin(uint8_t fps) {
   uint32_t now = millis();
   cur_ = poses_[mood_];
   target_ = poses_[mood_];
-  blinkK_ = blinkTarget_ = 1.0f;
+  blinkL_ = blinkTargetL_ = blinkR_ = blinkTargetR_ = 1.0f;
   lastFrame_ = now - frameMs_;     // gambar frame pertama langsung
   lastCycle_ = now;
   modeStart_ = now;
@@ -62,6 +69,8 @@ void KirbyEyes::setAutoBlink(bool on) { autoBlink_ = on; }
 void KirbyEyes::setAutoGlance(bool on) { autoGlance_ = on; }
 
 void KirbyEyes::setAutoCycle(bool on, uint16_t intervalMs) {
+  if (intervalMs < 100) intervalMs = 100;   // jangan ganti mood tiap frame
+  if (on == autoCycle_ && intervalMs == cycleMs_) return;   // aman dipanggil tiap loop
   autoCycle_ = on;
   cycleMs_ = intervalMs;
   lastCycle_ = millis();
@@ -72,10 +81,43 @@ void KirbyEyes::setLook(float x, float y) {
   lookOffY_ = y;
 }
 
+// Geser pandangan ke titik (x, y) di layar, dibatasi biar mata nggak keluar badan.
+void KirbyEyes::lookAt(float x, float y) {
+  const float maxOff = 6.0f;
+  float dx = x - cur_.cx;
+  float dy = y - cur_.cy;
+  float m = sqrtf(dx * dx + dy * dy);
+  if (m > maxOff) {
+    dx *= maxOff / m;
+    dy *= maxOff / m;
+  }
+  lookOffX_ = dx;
+  lookOffY_ = dy;
+}
+
+void KirbyEyes::setInverted(bool on) { inverted_ = on; }
+
+// Tutup mata yang dipilih, lalu jadwalin buka + blink otomatis berikutnya.
+void KirbyEyes::startBlink(bool left, bool right, uint16_t ms, uint32_t now) {
+  if (left) {
+    blinkTargetL_ = 0.0f;
+    blinkReopenL_ = now + ms;
+  }
+  if (right) {
+    blinkTargetR_ = 0.0f;
+    blinkReopenR_ = now + ms;
+  }
+  nextBlink_ = now + random(2200, 5200);
+}
+
 void KirbyEyes::blink() {
   if (mood_ == MOOD_SLEEPING) return;
-  blinkTarget_ = 0.0f;
-  blinkReopen_ = millis() + 110;
+  startBlink(true, true, BLINK_MS, millis());
+}
+
+void KirbyEyes::wink(bool leftEye) {
+  if (mood_ == MOOD_SLEEPING) return;
+  startBlink(leftEye, !leftEye, WINK_MS, millis());
 }
 
 // ---------- ekspresi ----------
@@ -100,18 +142,28 @@ KirbyPose* KirbyEyes::pose(uint8_t mood) {
 // ---------- loop ----------
 bool KirbyEyes::update() {
   uint32_t now = millis();
-  if ((uint32_t)(now - lastFrame_) < frameMs_) return false;   // non-blocking, tanpa delay()
-  lastFrame_ = now;
+  uint32_t dt = now - lastFrame_;
+  if (dt < frameMs_) return false;   // non-blocking, tanpa delay()
+
+  // akumulasi jadwal biar FPS nggak melar gara-gara loop periodenya ganjil
+  lastFrame_ += frameMs_;
+  if ((uint32_t)(now - lastFrame_) > frameMs_) lastFrame_ = now;   // ketinggalan jauh, jangan burst
 
   behave(now);
+
+  // koreksi per-frame ke waktu (33ms = frame 30fps), biar feel sama di FPS lain
+  float ratio = (float)dt * (1.0f / 33.3333f);
+  float k  = 1.0f - powf(1.0f - ease_, ratio);
+  float kb = 1.0f - powf(0.5f, ratio);
 
   // lerp: tiap nilai ngejar target -> inilah rahasia smooth-nya
   float* c = (float*)&cur_;
   const float* t = (const float*)&target_;
-  for (int i = 0; i < POSE_FLOATS; i++) c[i] += (t[i] - c[i]) * ease_;
+  for (int i = 0; i < POSE_FLOATS; i++) c[i] += (t[i] - c[i]) * k;
 
   // kedip dibikin lebih cepat dari gerakan lain
-  blinkK_ += (blinkTarget_ - blinkK_) * 0.5f;
+  blinkL_ += (blinkTargetL_ - blinkL_) * kb;
+  blinkR_ += (blinkTargetR_ - blinkR_) * kb;
 
   draw(now);
   return true;
@@ -123,14 +175,14 @@ void KirbyEyes::behave(uint32_t now) {
     setMood((mood_ + 1) % moodCount_, true);
   }
 
-  // kedip acak (ga kedip pas tidur)
-  if (blinkTarget_ == 0.0f && due(now, blinkReopen_)) blinkTarget_ = 1.0f;
-  if (autoBlink_ && mood_ != MOOD_SLEEPING && blinkTarget_ == 1.0f && due(now, nextBlink_)) {
-    blinkTarget_ = 0.0f;
-    blinkReopen_ = now + 110;
-    nextBlink_ = now + random(2200, 5200);
+  // kedip acak (ga kedip pas tidur); auto-blink nunggu dua mata melek
+  if (blinkTargetL_ == 0.0f && due(now, blinkReopenL_)) blinkTargetL_ = 1.0f;
+  if (blinkTargetR_ == 0.0f && due(now, blinkReopenR_)) blinkTargetR_ = 1.0f;
+  if (autoBlink_ && mood_ != MOOD_SLEEPING && blinkTargetL_ == 1.0f &&
+      blinkTargetR_ == 1.0f && due(now, nextBlink_)) {
+    startBlink(true, true, BLINK_MS, now);
   }
-  if (mood_ == MOOD_SLEEPING) blinkTarget_ = 1.0f;
+  if (mood_ == MOOD_SLEEPING) blinkTargetL_ = blinkTargetR_ = 1.0f;
 
   // lirik acak, kekuatannya diatur field 'glance' tiap pose
   if (due(now, nextGlance_)) {
@@ -154,8 +206,9 @@ void KirbyEyes::behave(uint32_t now) {
 
 // ---------- gambar ----------
 // Kapsul diputar sebesar ang. k = faktor kedip (1 melek .. 0 tutup),
-// kedip digambar pakai "kelopak" putih dari atas & bawah.
-void KirbyEyes::drawEye(float x, float y, const KirbyEye& e, float k) {
+// kedip digambar pakai "kelopak" dari atas & bawah.
+void KirbyEyes::drawEye(float x, float y, const KirbyEye& e, float k,
+                        uint16_t eyeColor, uint16_t lidColor) {
   const float DEG = 0.0174533f;
   float a  = e.ang * DEG;
   float sa = sinf(a), ca = cosf(a);
@@ -170,7 +223,7 @@ void KirbyEyes::drawEye(float x, float y, const KirbyEye& e, float k) {
   for (int i = 0; i <= steps; i++) {
     float t = (float)i / steps;
     display_.fillCircle((int)roundf(x1 + (x2 - x1) * t),
-                        (int)roundf(y1 + (y2 - y1) * t), ri, BLACK);
+                        (int)roundf(y1 + (y2 - y1) * t), ri, eyeColor);
   }
 
   // kelopak kedip
@@ -181,8 +234,8 @@ void KirbyEyes::drawEye(float x, float y, const KirbyEye& e, float k) {
     if (lid > 0) {
       int x0 = (int)roundf(x - extX) - 1;
       int wd = (int)(2 * extX) + 3;
-      display_.fillRect(x0, (int)roundf(y - extY) - 1, wd, lid + 1, WHITE);   // atas
-      display_.fillRect(x0, (int)roundf(y + extY) - lid, wd, lid + 1, WHITE); // bawah
+      display_.fillRect(x0, (int)roundf(y - extY) - 1, wd, lid + 1, lidColor);   // atas
+      display_.fillRect(x0, (int)roundf(y + extY) - lid, wd, lid + 1, lidColor); // bawah
     }
   }
 }
@@ -197,18 +250,25 @@ void KirbyEyes::draw(uint32_t ms) {
   float cy = cur_.cy + bob + sy;
   float R  = cur_.bodyR + breath;
 
-  display_.clearDisplay();
+  // warna: normal = badan putih/mata hitam; inverted dibalik
+  const uint16_t paper = inverted_ ? BLACK : WHITE;
+  const uint16_t ink   = inverted_ ? WHITE : BLACK;
+
+  if (inverted_) display_.fillScreen(WHITE);
+  else           display_.clearDisplay();
 
   // badan + dua tangan
-  display_.fillCircle((int)cx, (int)cy, (int)R, WHITE);
-  display_.fillCircle((int)(cx - R * 0.95f), (int)(cy + R * 0.30f), (int)cur_.bump, WHITE);
-  display_.fillCircle((int)(cx + R * 0.95f), (int)(cy + R * 0.30f), (int)cur_.bump, WHITE);
+  display_.fillCircle((int)cx, (int)cy, (int)R, paper);
+  display_.fillCircle((int)(cx - R * 0.95f), (int)(cy + R * 0.30f), (int)cur_.bump, paper);
+  display_.fillCircle((int)(cx + R * 0.95f), (int)(cy + R * 0.30f), (int)cur_.bump, paper);
 
   // mata kiri & kanan, masing-masing punya parameter sendiri
   float ex = cx + cur_.lookX;
   float ey = cy - 2 + cur_.lookY;
-  drawEye(ex - cur_.gap / 2 + cur_.eyeL.dx, ey + cur_.eyeL.dy, cur_.eyeL, blinkK_);
-  drawEye(ex + cur_.gap / 2 + cur_.eyeR.dx, ey + cur_.eyeR.dy, cur_.eyeR, blinkK_);
+  drawEye(ex - cur_.gap / 2 + cur_.eyeL.dx, ey + cur_.eyeL.dy, cur_.eyeL, blinkL_,
+          ink, paper);
+  drawEye(ex + cur_.gap / 2 + cur_.eyeR.dx, ey + cur_.eyeR.dy, cur_.eyeR, blinkR_,
+          ink, paper);
 
   display_.display();
 }
